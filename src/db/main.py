@@ -20,7 +20,7 @@ async def get_session():
 async def create_db_and_tables():
 
     async with engine.begin() as conn:
-        from src.books.model import Book
+        from src.models.book import Book
 
         print("Dropping all tables")
         await conn.run_sync(SQLModel.metadata.drop_all)
