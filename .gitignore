@@ -1,0 +1,30 @@
+# Python bytecode files
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+.venv/
+
+# Environment variables
+.env
+
+# Poetry files (optional, if you don't want to track the lock file)
+poetry.lock
+
+# Logs
+*.log
+
+# SQLite database files
+*.sqlite3
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Any other temp files
+*.bak
+*.tmp
