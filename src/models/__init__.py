@@ -1,3 +1,3 @@
-from .book import Book, BookModel
+from .book import Book
 
-__all__ = ["Book", "BookModel"]
+__all__ = ["Book"]
