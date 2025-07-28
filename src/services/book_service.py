@@ -30,7 +30,7 @@ class BookService:
 
         return book
 
-    async def get_book(self, book_id: int) -> Book:
+    async def get_book_by_id(self, book_id: int) -> Book:
 
         query = select(Book).where(Book.id == book_id)
         result = await self.db.execute(query)
