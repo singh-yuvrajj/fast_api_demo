@@ -1,9 +1,10 @@
 import uuid
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 from src.auth.models import User
 from src.auth.schema import UserCreate, UserUpdate
+from src.auth.utils import get_encrypted_password
 
 
 class UserService:
@@ -12,10 +13,21 @@ class UserService:
         self.db = db
 
     async def create_user(self, user_data: UserCreate) -> User:
-        user = User(**user_data.model_dump())
-        self.db.add(user)
-        await self.db.commit()
-        return user
+
+        try:
+            user = User(**user_data.model_dump())
+
+            user.password = get_encrypted_password(user.password)
+
+            self.db.add(user)
+            await self.db.commit()
+            return user
+
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error in creating user",
+            )
 
     async def get_all_users(self) -> list[User]:
         query = select(User)
@@ -24,6 +36,13 @@ class UserService:
 
     async def get_user_by_id(self, user_id: uuid.UUID) -> User:
         query = select(User).where(User.id == user_id)
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
+    async def get_user_by_username(self, user_name: str) -> User:
+
+        query = select(User).where(User.username == user_name)
+
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 

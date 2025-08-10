@@ -65,7 +65,7 @@ async def update_book(
 
 
 @book_router.delete(
-    "/{book_id}", response_model=BookRead, status_code=status.HTTP_204_NO_CONTENT
+    "/{book_id}", response_model=BookRead, status_code=status.HTTP_200_OK
 )
 async def delete_book(
     book_id: int, book_service: BookService = Depends(get_book_service)
