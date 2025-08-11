@@ -1,22 +1,69 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 import uuid
-from annotated_types import T
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
-from sqlmodel import true
 
 
+from src.auth.dependencies import AccessTokenBearer, RefreshTokenBearer
 from src.auth.schema import UserCreate, UserLogin, UserRead, UserUpdate
 from src.auth.service import UserService
-from src.auth.utils import create_access_token, verify_password
+from src.auth.utils import create_token, verify_password
+from src.db.redis import add_jti_to_blocklist
 from src.dependencies import get_user_service
 
 from src.config import get_settings
 
 settings = get_settings()
 
-
 auth_router = APIRouter()
+
+access_token_bearer = AccessTokenBearer()
+refresh_token_bearer = RefreshTokenBearer()
+
+
+@auth_router.get("/refresh_token", response_model=dict)
+async def refresh_token(token_data: dict = Depends(refresh_token_bearer)):
+
+    try:
+
+        if datetime.fromtimestamp(token_data["exp"]) > datetime.now():
+
+            access_token = create_token(user_data=token_data["user"])
+
+            return JSONResponse(
+                content={"access_token": access_token}, status_code=status.HTTP_200_OK
+            )
+
+        return HTTPException(
+            detail="expired refresh token", status_code=status.HTTP_406_NOT_ACCEPTABLE
+        )
+
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unexpected error",
+        )
+
+
+@auth_router.get("/logout", response_model=dict)
+async def user_logout(token_data: dict = Depends(access_token_bearer)):
+
+    try:
+
+        await add_jti_to_blocklist(token_data["jti"])
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK, content="Logged out successfully"
+        )
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unexpected error",
+        )
 
 
 @auth_router.post("/login", response_model=dict)
@@ -28,20 +75,16 @@ async def user_login(
 
         user = await user_service.get_user_by_username(user_input.username)
 
-        print("Here is the user", user)
-
         if user and verify_password(user_input.password, user.password):
 
             user_data = {"user_id": str(user.id), "user_email": user.email}
 
-            access_token = create_access_token(user_data)
-            refresh_token = create_access_token(
+            access_token = create_token(user_data)
+            refresh_token = create_token(
                 user_data,
                 expiry=timedelta(days=settings.REFRESH_TOKEN_EXPIRY),
-                refresh=true,
+                refresh=True,
             )
-
-            print("Here is the toen", refresh_token)
 
             response_content = {
                 "details": "login successful",
@@ -81,8 +124,13 @@ async def register_user(
 
 
 @auth_router.get("/users", response_model=list[UserRead])
-async def get_users(user_service: UserService = Depends(get_user_service)):
+async def get_users(
+    user_service: UserService = Depends(get_user_service),
+    user_details: AccessTokenBearer = Depends(access_token_bearer),
+):
     try:
+
+        print("Here is the user_Detaiks", user_details)
         users = await user_service.get_all_users()
         return users
     except Exception as e:

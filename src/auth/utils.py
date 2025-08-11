@@ -4,7 +4,6 @@ import uuid
 from passlib.context import CryptContext
 
 import jwt
-from sqlmodel import false
 
 from src.config import get_settings
 
@@ -26,19 +25,19 @@ def verify_password(password: str, hash: str):
     return password_context.verify(password, hash)
 
 
-def create_access_token(
+def create_token(
     user_data: dict,
     expiry: timedelta = timedelta(seconds=settings.ACCESS_TOKEN_EXPIRY),
-    refresh: bool = false,
+    refresh: bool = False,
 ):
 
     try:
         payload = {}
 
         payload["user"] = user_data
-        payload["expiry"] = str(datetime.now() + expiry)
+        payload["exp"] = datetime.now() + expiry
         payload["jti"] = str(uuid.uuid4())
-        payload["refresh"] = str(refresh)
+        payload["refresh"] = refresh
 
         token = jwt.encode(
             payload=payload, algorithm=settings.JWT_ALGORITHM, key=settings.JWT_SECRET
@@ -50,12 +49,12 @@ def create_access_token(
         raise
 
 
-def decode_access_token(token: str):
+def decode_token(token: str):
 
     try:
 
         token_data = jwt.decode(
-            token=token, algorithms=[settings.JWT_ALGORITHM], key=settings.JWT_SECRET
+            jwt=token, algorithms=[settings.JWT_ALGORITHM], key=settings.JWT_SECRET
         )
 
         return token_data
